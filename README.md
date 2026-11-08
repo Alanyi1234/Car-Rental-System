@@ -3,18 +3,12 @@
 A simulated car rental system: reserve a car of a given type (sedan, SUV, van) at a desired
 date and time for a given number of days, with a limited number of cars per type.
 
-Built with Java 21, Spring Boot 3 and Gradle.
+Written in Java 21 with Spring Boot 3 annotations.
 
 > **Status: skeleton.** The packages, classes, endpoints and method signatures are in place.
 > Method bodies are `TODO` stubs that throw `UnsupportedOperationException`, which the API
-> returns as **501 Not Implemented** until each one is filled in.
-
-## Running
-
-```bash
-./gradlew test        # run the tests (currently a context-loads smoke test)
-./gradlew bootRun     # start the API on http://localhost:8080
-```
+> returns as **501 Not Implemented** until each one is filled in. There is no build setup;
+> the code is meant to be read, not run.
 
 Fleet size is configured in `src/main/resources/application.yml`:
 
