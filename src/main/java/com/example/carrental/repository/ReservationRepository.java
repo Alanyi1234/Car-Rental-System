@@ -1,6 +1,6 @@
 package com.example.carrental.repository;
 
-import com.example.carrental.domain.Reservation;
+import com.example.carrental.model.Reservation;
 
 import java.util.List;
 import java.util.Optional;
@@ -8,8 +8,7 @@ import java.util.UUID;
 
 /**
  * Storage abstraction for reservations. The in-memory implementation is used for this
- * exercise; a JPA/Postgres implementation could be swapped in without touching the service
- * (see docs/schema.sql).
+ * exercise; a database-backed implementation could be swapped in without touching the service.
  */
 public interface ReservationRepository {
 

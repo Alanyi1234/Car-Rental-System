@@ -1,8 +1,8 @@
 package com.example.carrental.controller;
 
-import com.example.carrental.dto.ReservationRequest;
-import com.example.carrental.dto.ReservationResponse;
-import com.example.carrental.dto.ReservationUpdateRequest;
+import com.example.carrental.model.ReservationRequest;
+import com.example.carrental.model.ReservationResponse;
+import com.example.carrental.model.ReservationUpdateRequest;
 import com.example.carrental.service.RentalService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;

@@ -1,4 +1,4 @@
-package com.example.carrental.domain;
+package com.example.carrental.model;
 
 public enum ReservationStatus {
     ACTIVE,
