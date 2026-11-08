@@ -2,6 +2,8 @@ package com.example.carrental.service;
 
 import com.example.carrental.model.CarType;
 import com.example.carrental.model.Reservation;
+import com.example.carrental.repository.CarRepository;
+import com.example.carrental.repository.ReservationRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -9,18 +11,18 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Booking logic (reserve, modify, cancel, availability). Uses CarService and
- * ReservationService, which go through the repositories.
+ * Booking logic (reserve, modify, cancel, availability). All data access goes through
+ * CarRepository and ReservationRepository.
  */
 @Service
 public class RentalService {
 
-    private final CarService carService;
-    private final ReservationService reservationService;
+    private final CarRepository carRepository;
+    private final ReservationRepository reservationRepository;
 
-    public RentalService(CarService carService, ReservationService reservationService) {
-        this.carService = carService;
-        this.reservationService = reservationService;
+    public RentalService(CarRepository carRepository, ReservationRepository reservationRepository) {
+        this.carRepository = carRepository;
+        this.reservationRepository = reservationRepository;
     }
 
     /** Reserves a car of the given type for {@code days} days starting at {@code start}. */
