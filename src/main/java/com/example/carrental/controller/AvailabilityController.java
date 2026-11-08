@@ -44,8 +44,7 @@ public class AvailabilityController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
             @RequestParam int days,
             @RequestParam(required = false) CarType type) {
-        // TODO: call rentalService.availableCars(start, days, type)
-        throw new UnsupportedOperationException("TODO: GET /availability/cars");
+        return rentalService.availableCars(start, days, type);
     }
 
     /** Bad input (missing or invalid fields, unreadable JSON, wrong parameter types) returns 400. */
