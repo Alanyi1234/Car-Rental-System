@@ -1,4 +1,4 @@
-package com.example.carrental.domain;
+package com.example.carrental.model;
 
 /**
  * A single physical car in the fleet, e.g. "SUV-2".
