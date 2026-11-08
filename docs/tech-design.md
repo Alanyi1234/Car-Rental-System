@@ -335,7 +335,7 @@ HTTP/1.1 204 No Content
 
 | Repository | Methods |
 |---|---|
-| `CarRepository` | `findAll`, `findById`, `findByType`, `save`, `deleteById` |
+| `CarRepository` | `findAll`, `findById`, `findByType`, `findByTypeForUpdate` (locks the rows), `save`, `deleteById` |
 | `ReservationRepository` | `findAll`, `findById`, `findActiveByCarId`, `save`, `deleteById` |
 
 ## 6. Data model
@@ -404,8 +404,8 @@ A car can have many reservations over time; each reservation is for exactly one 
 
 1. Client sends `POST /reservations` with car type, start and number of days.
 2. `ReservationController` validates the request and calls `RentalService.reserve`.
-3. `RentalService` gets the cars of that type from `CarRepository`, and their active
-   reservations from `ReservationRepository`.
+3. In one transaction, `RentalService` gets and locks the cars of that type from
+   `CarRepository`, and gets their active reservations from `ReservationRepository`.
 4. It picks a car with no overlapping reservation. If none is free, the request is rejected.
 5. It saves the new reservation through `ReservationRepository` and returns it.
 
@@ -413,9 +413,30 @@ A car can have many reservations over time; each reservation is for exactly one 
 
 | `RentalService` method | Repository calls |
 |---|---|
-| `reserve` | `CarRepository.findByType`, `ReservationRepository.findActiveByCarId`, `ReservationRepository.save` |
+| `reserve` | `CarRepository.findByTypeForUpdate`, `ReservationRepository.findActiveByCarId`, `ReservationRepository.save` |
 | `getReservation` | `ReservationRepository.findById` |
-| `modify` | `ReservationRepository.findById`, `CarRepository.findByType`, `ReservationRepository.findActiveByCarId`, `ReservationRepository.save` |
+| `modify` | `ReservationRepository.findById`, `CarRepository.findByTypeForUpdate`, `ReservationRepository.findActiveByCarId`, `ReservationRepository.save` |
 | `cancel` | `ReservationRepository.findById`, `ReservationRepository.save` |
 | `availability` | `CarRepository.findByType`, `ReservationRepository.findActiveByCarId` |
 | `availableCars` | `CarRepository.findByType` (or `findAll` with no type), `ReservationRepository.findActiveByCarId` |
+
+## 8. Concurrency
+
+**Problem:** two people try to book the last free car of a type at the same moment. Both
+requests check, both see the car as free, and both save a booking.
+
+**Approach:** `reserve`, `modify` and `cancel` each run in a single database transaction
+(`@Transactional`), so their steps succeed or fail together. When booking, the service reads
+the cars of the requested type with a row lock (`findByTypeForUpdate`, i.e.
+`SELECT ... FOR UPDATE`). A second request for the same type waits until the first one
+commits, then sees the car as taken and picks another car or gets "no availability".
+
+- The lock is held only for the check and save (milliseconds), not while a user fills in a form.
+- Requests for different car types never wait on each other.
+- Read-only endpoints (`/availability`, `/availability/cars`) don't lock, so they never wait.
+
+**At scale:** the lock lives in the database, so it works across any number of app servers.
+The limit is contention on popular car types: many simultaneous bookings for the same type
+queue briefly. If that becomes a bottleneck, options are locking a single car instead of the
+whole type, splitting the fleet by location, or switching to an optimistic approach (a database
+constraint rejects overlapping bookings and the request retries with the next car).
