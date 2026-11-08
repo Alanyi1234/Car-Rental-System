@@ -57,10 +57,11 @@ flowchart TD
 | # | Method | Path | Purpose |
 |---|---|---|---|
 | 4.1 | GET | `/availability` | Free cars per type for a period |
-| 4.2 | POST | `/reservations` | Reserve a car of a type |
-| 4.3 | GET | `/reservations/{id}` | View a reservation |
-| 4.4 | PATCH | `/reservations/{id}` | Change type, start and/or days |
-| 4.5 | DELETE | `/reservations/{id}` | Cancel a reservation |
+| 4.2 | GET | `/availability/cars` | The individual free cars for a period |
+| 4.3 | POST | `/reservations` | Reserve a car of a type |
+| 4.4 | GET | `/reservations/{id}` | View a reservation |
+| 4.5 | PATCH | `/reservations/{id}` | Change type, start and/or days |
+| 4.6 | DELETE | `/reservations/{id}` | Cancel a reservation |
 
 Dates and times use ISO-8601 format, e.g. `2030-12-01T10:00:00`. The error codes below are
 the intended ones.
@@ -107,7 +108,45 @@ HTTP/1.1 200 OK
 | 200 OK | Availability returned |
 | 400 Bad Request | Missing or invalid `start`/`days`, unknown `carType` |
 
-### 4.2 Create a reservation – `POST /reservations`
+### 4.2 List available cars – `GET /availability/cars`
+
+Lists the individual cars that are free for the whole period. Where 4.1 answers "how many
+of each type are free?", this answers "which exact cars are free?". With a large fleet,
+this list could be paginated (e.g. `page` and `size` parameters).
+
+**Handled by:** `AvailabilityController.availableCars` → `RentalService.availableCars`
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| `start` | date-time | Yes | Start of the rental |
+| `days` | integer | Yes | Number of days, at least 1 |
+| `type` | `SEDAN` / `SUV` / `VAN` | No | Only show cars of this type. If omitted, returns the free cars of every type. |
+
+**Example**
+
+```http
+GET /availability/cars?start=2030-12-01T10:00:00&days=3&type=SUV
+```
+
+```http
+HTTP/1.1 200 OK
+
+[
+  { "id": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d", "type": "SUV" },
+  { "id": "c41f9a07-2e6b-4d8c-a3f5-9b0e1d7c6a28", "type": "SUV" }
+]
+```
+
+**Responses**
+
+| Status | When |
+|---|---|
+| 200 OK | List returned (empty if nothing is free) |
+| 400 Bad Request | Missing or invalid `start`/`days`, unknown `type` |
+
+### 4.3 Create a reservation – `POST /reservations`
 
 Reserves one car of the requested type. The system picks a specific car that is free for
 the whole period.
@@ -154,7 +193,7 @@ Location: /reservations/3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f
 | 400 Bad Request | Missing or invalid fields |
 | 409 Conflict | No car of that type is free for the period |
 
-### 4.3 Get a reservation – `GET /reservations/{id}`
+### 4.4 Get a reservation – `GET /reservations/{id}`
 
 Returns one reservation, including cancelled ones.
 
@@ -193,7 +232,7 @@ HTTP/1.1 200 OK
 | 200 OK | Reservation returned |
 | 404 Not Found | No reservation with that id |
 
-### 4.4 Modify a reservation – `PATCH /reservations/{id}`
+### 4.5 Modify a reservation – `PATCH /reservations/{id}`
 
 Changes the car type, start and/or number of days. Only the fields sent are changed. If the
 change can't be made, the original reservation stays as it was.
@@ -246,7 +285,7 @@ HTTP/1.1 200 OK
 | 404 Not Found | No reservation with that id |
 | 409 Conflict | No car free for the new period, or the reservation is cancelled |
 
-### 4.5 Cancel a reservation – `DELETE /reservations/{id}`
+### 4.6 Cancel a reservation – `DELETE /reservations/{id}`
 
 Cancels a reservation and frees its car. The reservation is kept with status `CANCELLED`
 rather than deleted. Cancelling twice has no extra effect.
@@ -289,7 +328,7 @@ HTTP/1.1 204 No Content
 
 | Service | Methods |
 |---|---|
-| `RentalService` | `reserve`, `getReservation`, `modify`, `cancel`, `availability` |
+| `RentalService` | `reserve`, `getReservation`, `modify`, `cancel`, `availability`, `availableCars` |
 
 ### 5.3 Repositories
 
@@ -378,3 +417,4 @@ A car can have many reservations over time; each reservation is for exactly one 
 | `modify` | `ReservationRepository.findById`, `CarRepository.findByType`, `ReservationRepository.findActiveByCarId`, `ReservationRepository.save` |
 | `cancel` | `ReservationRepository.findById`, `ReservationRepository.save` |
 | `availability` | `CarRepository.findByType`, `ReservationRepository.findActiveByCarId` |
+| `availableCars` | `CarRepository.findByType` (or `findAll` with no type), `ReservationRepository.findActiveByCarId` |
