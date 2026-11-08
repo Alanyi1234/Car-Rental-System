@@ -2,6 +2,7 @@ package com.example.carrental.service;
 
 import com.example.carrental.model.CarType;
 import com.example.carrental.model.Reservation;
+import com.example.carrental.repository.CarRepository;
 import com.example.carrental.repository.ReservationRepository;
 import org.springframework.stereotype.Service;
 
@@ -15,10 +16,12 @@ import java.util.UUID;
 @Service
 public class RentalService {
 
-    private final ReservationRepository repository;
+    private final CarRepository carRepository;
+    private final ReservationRepository reservationRepository;
 
-    public RentalService(ReservationRepository repository) {
-        this.repository = repository;
+    public RentalService(CarRepository carRepository, ReservationRepository reservationRepository) {
+        this.carRepository = carRepository;
+        this.reservationRepository = reservationRepository;
     }
 
     /** Reserves a car of the given type for {@code days} days starting at {@code start}. */
