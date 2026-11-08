@@ -1,4 +1,4 @@
-package com.example.carrental.api;
+package com.example.carrental.dto;
 
 import com.example.carrental.domain.CarType;
 import com.example.carrental.domain.Reservation;
@@ -22,6 +22,7 @@ public record ReservationResponse(
 ) {
 
     public static ReservationResponse from(Reservation r) {
-        return new ReservationResponse(r.id(), r.car().id(), r.carType(), r.start(), r.end(), r.days(), r.status());
+        // TODO: map the domain Reservation to this response
+        throw new UnsupportedOperationException("TODO: ReservationResponse.from");
     }
 }

@@ -1,4 +1,4 @@
-package com.example.carrental.api;
+package com.example.carrental.dto;
 
 import com.example.carrental.domain.CarType;
 import jakarta.validation.constraints.Min;

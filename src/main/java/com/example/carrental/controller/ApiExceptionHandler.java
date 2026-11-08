@@ -1,4 +1,4 @@
-package com.example.carrental.api;
+package com.example.carrental.controller;
 
 import com.example.carrental.domain.NoAvailabilityException;
 import com.example.carrental.domain.ReservationCancelledException;
@@ -37,6 +37,12 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ProblemDetail handleBadRequest(IllegalArgumentException ex) {
         return problem(HttpStatus.BAD_REQUEST, "Invalid request", ex.getMessage());
+    }
+
+    /** Stubbed endpoints throw this until they are implemented. */
+    @ExceptionHandler(UnsupportedOperationException.class)
+    public ProblemDetail handleNotImplemented(UnsupportedOperationException ex) {
+        return problem(HttpStatus.NOT_IMPLEMENTED, "Not implemented", ex.getMessage());
     }
 
     private static ProblemDetail problem(HttpStatus status, String title, String detail) {
