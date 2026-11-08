@@ -9,17 +9,18 @@ A simulated car rental system. Customers can see which cars are free for a perio
 car of a given type for a start date/time and a number of days, change a reservation, and
 cancel it. The number of cars of each type is limited.
 
-## 2. Goals and non-goals
+## 2. Goals and future additions
 
 **Goals**
 - Model the rental domain with clear object-oriented layers.
 - Expose the main actions as a REST API.
 - Keep all data access behind a repository layer.
 
-**Non-goals (for now)**
-- Payments, customer accounts and authentication.
-- Multiple rental locations or time zones.
-- A specific database. The repositories define the data access, not the storage technology.
+**Future additions**
+- **Pricing:** a price per day for each car, so reservations and availability can show the
+  total cost.
+- **Locations:** multiple rental locations, so a customer can choose where to pick up and
+  drop off the car (possibly different places).
 
 ## 3. Architecture
 
