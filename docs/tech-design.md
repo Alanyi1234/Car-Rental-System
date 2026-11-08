@@ -137,7 +137,7 @@ Location: /reservations/3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f
 
 {
   "id": "3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f",
-  "carId": "SUV-1",
+  "carId": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d",
   "carType": "SUV",
   "start": "2030-12-01T10:00:00",
   "end": "2030-12-04T10:00:00",
@@ -177,7 +177,7 @@ HTTP/1.1 200 OK
 
 {
   "id": "3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f",
-  "carId": "SUV-1",
+  "carId": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d",
   "carType": "SUV",
   "start": "2030-12-01T10:00:00",
   "end": "2030-12-04T10:00:00",
@@ -228,7 +228,7 @@ HTTP/1.1 200 OK
 
 {
   "id": "3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f",
-  "carId": "SUV-1",
+  "carId": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d",
   "carType": "SUV",
   "start": "2030-12-01T10:00:00",
   "end": "2030-12-06T10:00:00",
@@ -303,7 +303,7 @@ HTTP/1.1 204 No Content
 ```mermaid
 classDiagram
     class Car {
-        String id
+        UUID id
         CarType type
     }
     class Reservation {
@@ -329,9 +329,36 @@ classDiagram
     Reservation --> ReservationStatus
 ```
 
-- A **Car** is one physical car, e.g. `SUV-2`, of a given type.
+- A **Car** is one physical car of a given type, identified by a UUID.
 - A **Reservation** books one car from `start` to `end`. Cancelling changes its status
   rather than deleting it.
+
+### Database tables
+
+Each repository reads and writes one table.
+
+| Repository | Table | Columns |
+|---|---|---|
+| `CarRepository` | `cars` | `id` (PK), `type` |
+| `ReservationRepository` | `reservations` | `id` (PK), `car_id` (FK → `cars.id`), `start_time`, `end_time`, `status` |
+
+```mermaid
+erDiagram
+    cars ||--o{ reservations : "booked by"
+    cars {
+        uuid id PK
+        string type
+    }
+    reservations {
+        uuid id PK
+        uuid car_id FK
+        datetime start_time
+        datetime end_time
+        string status
+    }
+```
+
+A car can have many reservations over time; each reservation is for exactly one car.
 
 ## 7. Main flow: reserving a car
 

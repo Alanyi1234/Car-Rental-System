@@ -8,7 +8,7 @@ import java.util.UUID;
  */
 public record ReservationResponse(
         UUID id,
-        String carId,
+        UUID carId,
         CarType carType,
         LocalDateTime start,
         LocalDateTime end,
