@@ -1,0 +1,16 @@
+package com.example.carrental.api;
+
+import com.example.carrental.domain.CarType;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+public record AvailabilityResponse(
+        LocalDateTime start,
+        LocalDateTime end,
+        List<TypeAvailability> available
+) {
+
+    public record TypeAvailability(CarType carType, int count) {
+    }
+}
