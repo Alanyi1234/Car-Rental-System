@@ -341,3 +341,13 @@ classDiagram
    reservations from `ReservationRepository`.
 4. It picks a car with no overlapping reservation. If none is free, the request is rejected.
 5. It saves the new reservation through `ReservationRepository` and returns it.
+
+### Repository calls per service method
+
+| `RentalService` method | Repository calls |
+|---|---|
+| `reserve` | `CarRepository.findByType`, `ReservationRepository.findActiveByCarId`, `ReservationRepository.save` |
+| `getReservation` | `ReservationRepository.findById` |
+| `modify` | `ReservationRepository.findById`, `CarRepository.findByType`, `ReservationRepository.findActiveByCarId`, `ReservationRepository.save` |
+| `cancel` | `ReservationRepository.findById`, `ReservationRepository.save` |
+| `availability` | `CarRepository.findByType`, `ReservationRepository.findActiveByCarId` |
