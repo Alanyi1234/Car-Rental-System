@@ -47,7 +47,7 @@ class RentalServiceTest {
 
     @Test
     void reserve_savesReservationWhenCarIsFree() {
-        when(carRepository.findByTypeForUpdate(CarType.SUV)).thenReturn(List.of(suv));
+        when(carRepository.findByType(CarType.SUV)).thenReturn(List.of(suv));
         when(reservationRepository.findActiveByCarId(suv.id())).thenReturn(List.of());
 
         Reservation result = rentalService.reserve(CarType.SUV, START, 3);
@@ -60,7 +60,7 @@ class RentalServiceTest {
     @Test
     void reserve_throwsWhenNoCarIsFree() {
         Reservation existing = new Reservation(UUID.randomUUID(), suv, START, START.plusDays(3), ReservationStatus.ACTIVE);
-        when(carRepository.findByTypeForUpdate(CarType.SUV)).thenReturn(List.of(suv));
+        when(carRepository.findByType(CarType.SUV)).thenReturn(List.of(suv));
         when(reservationRepository.findActiveByCarId(suv.id())).thenReturn(List.of(existing));
 
         assertThrows(IllegalStateException.class, () -> rentalService.reserve(CarType.SUV, START, 3));

@@ -29,15 +29,6 @@ public class CarRepository {
         throw new UnsupportedOperationException("TODO: findByType");
     }
 
-    /**
-     * Same as {@link #findByType}, but locks the returned rows until the current transaction
-     * ends (SELECT ... FOR UPDATE). Used when booking, so two requests can't take the same car.
-     */
-    public List<Car> findByTypeForUpdate(CarType type) {
-        // TODO
-        throw new UnsupportedOperationException("TODO: findByTypeForUpdate");
-    }
-
     /** Inserts or updates a car. */
     public void save(Car car) {
         // TODO

@@ -73,6 +73,12 @@ public class ReservationController {
                 .body("Invalid request: " + ex.getMessage());
     }
 
+    /** No car available, or someone else just booked it (DB constraint), returns 409. */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<String> handleConflict(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
+    }
+
     /** Generic fallback: any unhandled error returns 500 with a short message. */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleError(Exception ex) {

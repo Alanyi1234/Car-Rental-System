@@ -48,7 +48,7 @@ flowchart TD
 
 | Layer | Responsibility |
 |---|---|
-| **Controller** | Receives HTTP requests, validates input, returns responses. No business rules. Each controller has two `@ExceptionHandler`s: bad input returns 400, and any other unhandled error returns 500 with a short message. |
+| **Controller** | Receives HTTP requests, validates input, returns responses. No business rules. Each controller has `@ExceptionHandler`s: bad input returns 400, and any other unhandled error returns 500 with a short message. `ReservationController` also returns 409 when no car is available or someone else just booked it. |
 | **Service** | Business logic. `RentalService` handles the booking rules and calls the repositories for data. |
 | **Repository** | The only place that reads or writes data. |
 | **Model** | Plain data types shared by all layers. |
@@ -192,7 +192,7 @@ Location: /reservations/3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f
 |---|---|
 | 201 Created | Reservation made; `Location` header points to it |
 | 400 Bad Request | Missing or invalid fields |
-| 409 Conflict | No car of that type is free for the period |
+| 409 Conflict | No car of that type is free for the period, or someone else booked it at the same moment |
 
 ### 4.4 Get a reservation – `GET /reservations/{id}`
 
@@ -335,7 +335,7 @@ HTTP/1.1 204 No Content
 
 | Repository | Methods |
 |---|---|
-| `CarRepository` | `findAll`, `findById`, `findByType`, `findByTypeForUpdate` (locks the rows), `save`, `deleteById` |
+| `CarRepository` | `findAll`, `findById`, `findByType`, `save`, `deleteById` |
 | `ReservationRepository` | `findAll`, `findById`, `findActiveByCarId`, `save`, `deleteById` |
 
 ## 6. Data model
@@ -404,18 +404,20 @@ A car can have many reservations over time; each reservation is for exactly one 
 
 1. Client sends `POST /reservations` with car type, start and number of days.
 2. `ReservationController` validates the request and calls `RentalService.reserve`.
-3. In one transaction, `RentalService` gets and locks the cars of that type from
-   `CarRepository`, and gets their active reservations from `ReservationRepository`.
+3. `RentalService` gets the cars of that type from `CarRepository`, and their active
+   reservations from `ReservationRepository`.
 4. It picks a car with no overlapping reservation. If none is free, the request is rejected.
-5. It saves the new reservation through `ReservationRepository` and returns it.
+5. It saves the new reservation through `ReservationRepository` and returns it. If the
+   database rejects the save because someone just booked that car (section 8), the client
+   gets a 409 Conflict.
 
 ### Repository calls per service method
 
 | `RentalService` method | Repository calls |
 |---|---|
-| `reserve` | `CarRepository.findByTypeForUpdate`, `ReservationRepository.findActiveByCarId`, `ReservationRepository.save` |
+| `reserve` | `CarRepository.findByType`, `ReservationRepository.findActiveByCarId`, `ReservationRepository.save` |
 | `getReservation` | `ReservationRepository.findById` |
-| `modify` | `ReservationRepository.findById`, `CarRepository.findByTypeForUpdate`, `ReservationRepository.findActiveByCarId`, `ReservationRepository.save` |
+| `modify` | `ReservationRepository.findById`, `CarRepository.findByType`, `ReservationRepository.findActiveByCarId`, `ReservationRepository.save` |
 | `cancel` | `ReservationRepository.findById`, `ReservationRepository.save` |
 | `availability` | `CarRepository.findByType`, `ReservationRepository.findActiveByCarId` |
 | `availableCars` | `CarRepository.findByType` (or `findAll` with no type), `ReservationRepository.findActiveByCarId` |
@@ -425,18 +427,38 @@ A car can have many reservations over time; each reservation is for exactly one 
 **Problem:** two people try to book the last free car of a type at the same moment. Both
 requests check, both see the car as free, and both save a booking.
 
-**Approach:** `reserve`, `modify` and `cancel` each run in a single database transaction
-(`@Transactional`), so their steps succeed or fail together. When booking, the service reads
-the cars of the requested type with a row lock (`findByTypeForUpdate`, i.e.
-`SELECT ... FOR UPDATE`). A second request for the same type waits until the first one
-commits, then sees the car as taken and picks another car or gets "no availability".
+**Approach: a database constraint, no locks.** The `reservations` table has an exclusion
+constraint that rejects any active booking overlapping another active booking of the same car:
 
-- The lock is held only for the check and save (milliseconds), not while a user fills in a form.
-- Requests for different car types never wait on each other.
-- Read-only endpoints (`/availability`, `/availability/cars`) don't lock, so they never wait.
+```sql
+CREATE EXTENSION IF NOT EXISTS btree_gist;
 
-**At scale:** the lock lives in the database, so it works across any number of app servers.
-The limit is contention on popular car types: many simultaneous bookings for the same type
-queue briefly. If that becomes a bottleneck, options are locking a single car instead of the
-whole type, splitting the fleet by location, or switching to an optimistic approach (a database
-constraint rejects overlapping bookings and the request retries with the next car).
+ALTER TABLE reservations
+    ADD CONSTRAINT no_overlapping_bookings
+    EXCLUDE USING gist (
+        car_id WITH =,
+        tsrange(start_time, end_time) WITH &&
+    )
+    WHERE (status = 'ACTIVE');
+```
+
+- **`car_id WITH =`**: same car.
+- **`tsrange(start_time, end_time) WITH &&`**: overlapping time ranges. Ranges include the start
+  but not the end, so back-to-back bookings are allowed.
+- **`WHERE (status = 'ACTIVE')`**: cancelled bookings don't count.
+
+**How the service uses it:** `RentalService.reserve` picks the first car that looks free and
+saves a booking for it. If two requests race for the same car, the database accepts one save
+and rejects the other (`DataIntegrityViolationException`). The losing request gets a
+**409 Conflict** and the client can simply try again. `modify` works the same way.
+
+**Why this approach:**
+- Nothing is locked, so requests never wait for each other, even for popular car types.
+- The guarantee lives in the database, so it holds across any number of app servers and
+  even if the application logic has a bug.
+- Conflicts on the exact same car at the exact same moment are rare in car rental, so 409s
+  from this are rare too.
+
+**At larger scale:** booking systems often add per-type inventory counters (an atomic "take one
+if any are left" update) and temporary holds during checkout, while keeping this constraint as
+the final safety net.

@@ -6,8 +6,8 @@ import com.example.carrental.model.Reservation;
 import com.example.carrental.model.ReservationStatus;
 import com.example.carrental.repository.CarRepository;
 import com.example.carrental.repository.ReservationRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -22,9 +22,9 @@ import java.util.UUID;
  * Booking logic (reserve, modify, cancel, availability). All data access goes through
  * CarRepository and ReservationRepository.
  *
- * <p>Concurrency: reserve, modify and cancel each run in one transaction. Booking reads the
- * cars of the requested type with a row lock, so two requests for the same type run one after
- * the other and can't both take the last free car.
+ * <p>Concurrency: nothing is locked. A database constraint rejects overlapping active bookings
+ * of the same car, so if two requests race, one succeeds and the other gets a 409 Conflict.
+ * "No availability" and "conflict" are signalled with IllegalStateException.
  */
 @Service
 public class RentalService {
@@ -38,17 +38,21 @@ public class RentalService {
     }
 
     /** Reserves a car of the given type for {@code days} days starting at {@code start}. */
-    @Transactional
     public Reservation reserve(CarType type, LocalDateTime start, int days) {
         LocalDateTime end = start.plusDays(days);
 
-        // Lock the cars of this type until the transaction ends.
-        List<Car> cars = carRepository.findByTypeForUpdate(type);
-        Car car = firstFreeCar(cars, start, end, null)
+        Car car = firstFreeCar(carRepository.findByType(type), start, end, null)
                 .orElseThrow(() -> new IllegalStateException("No " + type + " available for that period"));
 
         Reservation reservation = new Reservation(UUID.randomUUID(), car, start, end, ReservationStatus.ACTIVE);
-        reservationRepository.save(reservation);
+
+        // The DB constraint no_overlapping_bookings rejects overlapping bookings of the same car,
+        // so if someone books it at the same moment, the save fails and we return 409.
+        try {
+            reservationRepository.save(reservation);
+        } catch (DataIntegrityViolationException e) {
+            throw new IllegalStateException("That " + type + " was just booked by someone else");
+        }
         return reservation;
     }
 
@@ -59,7 +63,6 @@ public class RentalService {
     }
 
     /** Changes the type, start and/or length of a reservation. A null argument means "keep the current value". */
-    @Transactional
     public Reservation modify(UUID id, CarType newType, LocalDateTime newStart, Integer newDays) {
         Reservation current = getReservation(id);
         if (current.status() == ReservationStatus.CANCELLED) {
@@ -71,28 +74,29 @@ public class RentalService {
         int days = newDays != null ? newDays : (int) Duration.between(current.start(), current.end()).toDays();
         LocalDateTime end = start.plusDays(days);
 
-        // Lock the cars of the requested type until the transaction ends.
-        List<Car> cars = carRepository.findByTypeForUpdate(type);
-
         // Keep the same car if it is still free, otherwise pick another free car of the type.
         Optional<Car> car = Optional.empty();
         if (type == current.car().type() && isFree(current.car(), start, end, id)) {
             car = Optional.of(current.car());
         }
         if (car.isEmpty()) {
-            car = firstFreeCar(cars, start, end, id);
+            car = firstFreeCar(carRepository.findByType(type), start, end, id);
         }
 
         Reservation updated = new Reservation(
                 id,
                 car.orElseThrow(() -> new IllegalStateException("No " + type + " available for that period")),
                 start, end, ReservationStatus.ACTIVE);
-        reservationRepository.save(updated);
+        try {
+            reservationRepository.save(updated);
+        } catch (DataIntegrityViolationException e) {
+            // Someone else booked that car for an overlapping period at the same moment.
+            throw new IllegalStateException("No " + type + " available for that period");
+        }
         return updated;
     }
 
     /** Cancels a reservation, freeing its car. Cancelling twice has no extra effect. */
-    @Transactional
     public void cancel(UUID id) {
         Reservation reservation = getReservation(id);
         if (reservation.status() == ReservationStatus.ACTIVE) {
