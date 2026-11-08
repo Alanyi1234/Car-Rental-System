@@ -1,6 +1,7 @@
-package com.example.carrental.api;
+package com.example.carrental.controller;
 
 import com.example.carrental.domain.CarType;
+import com.example.carrental.dto.AvailabilityResponse;
 import com.example.carrental.service.RentalService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;

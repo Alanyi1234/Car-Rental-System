@@ -55,7 +55,8 @@ curl -X DELETE localhost:8080/reservations/{id}
 ## Design
 
 ```
-api/          Controllers, request/response DTOs, exception → HTTP mapping   (Spring)
+controller/   REST controllers, exception → HTTP mapping                     (Spring)
+dto/          Request/response records for the REST API                      (plain Java)
 config/       Wires the domain into Spring, binds fleet capacity             (Spring)
 service/      RentalService: reserve, modify, cancel, availability           (plain Java)
 domain/       CarType, Car, Reservation, Fleet, domain exceptions            (plain Java)

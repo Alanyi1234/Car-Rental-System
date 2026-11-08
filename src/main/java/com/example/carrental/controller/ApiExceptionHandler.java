@@ -1,4 +1,4 @@
-package com.example.carrental.api;
+package com.example.carrental.controller;
 
 import com.example.carrental.domain.NoAvailabilityException;
 import com.example.carrental.domain.ReservationCancelledException;

@@ -1,4 +1,4 @@
-package com.example.carrental.api;
+package com.example.carrental.controller;
 
 import com.example.carrental.domain.Car;
 import com.example.carrental.domain.CarType;

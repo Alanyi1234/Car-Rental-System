@@ -1,6 +1,9 @@
-package com.example.carrental.api;
+package com.example.carrental.controller;
 
 import com.example.carrental.domain.Reservation;
+import com.example.carrental.dto.ReservationRequest;
+import com.example.carrental.dto.ReservationResponse;
+import com.example.carrental.dto.ReservationUpdateRequest;
 import com.example.carrental.service.RentalService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
