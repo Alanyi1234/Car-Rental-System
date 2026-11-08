@@ -1,21 +1,42 @@
 package com.example.carrental.repository;
 
 import com.example.carrental.model.Reservation;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Storage abstraction for reservations. The in-memory implementation is used for this
- * exercise; a database-backed implementation could be swapped in without touching the service.
+ * Data access for reservations.
  */
-public interface ReservationRepository {
+@Repository
+public class ReservationRepository {
 
-    /** Inserts or replaces the reservation with the same id. */
-    void save(Reservation reservation);
+    public List<Reservation> findAll() {
+        // TODO
+        throw new UnsupportedOperationException("TODO: findAll");
+    }
 
-    Optional<Reservation> findById(UUID id);
+    public void deleteById(UUID id) {
+        // TODO
+        throw new UnsupportedOperationException("TODO: deleteById");
+    }
 
-    List<Reservation> findActiveByCarId(String carId);
+    /** Inserts or updates a reservation. */
+    public void save(Reservation reservation) {
+        // TODO
+        throw new UnsupportedOperationException("TODO: save");
+    }
+
+    public Optional<Reservation> findById(UUID id) {
+        // TODO
+        throw new UnsupportedOperationException("TODO: findById");
+    }
+
+    /** Non-cancelled reservations for one car. */
+    public List<Reservation> findActiveByCarId(String carId) {
+        // TODO
+        throw new UnsupportedOperationException("TODO: findActiveByCarId");
+    }
 }

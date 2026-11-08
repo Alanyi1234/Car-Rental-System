@@ -21,8 +21,8 @@ date and time for a given number of days, with a limited number of cars per type
 
 ```
 controller/   REST endpoints: ReservationController, AvailabilityController
-service/      RentalService: reserve, getReservation, modify, cancel, availability
-repository/   CarRepository + ReservationRepository, each with an in-memory implementation
-              (all data access goes through here)
+service/      CarService, ReservationService: basic CRUD over each repository
+              RentalService: reserve, getReservation, modify, cancel, availability
+repository/   CarRepository, ReservationRepository (all data access goes through here)
 model/        Data types: Car, CarType, Reservation, ReservationStatus, request/response records
 ```
