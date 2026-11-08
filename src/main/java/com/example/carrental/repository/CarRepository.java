@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Data access for the fleet's cars.
@@ -18,7 +19,7 @@ public class CarRepository {
         throw new UnsupportedOperationException("TODO: findAll");
     }
 
-    public Optional<Car> findById(String id) {
+    public Optional<Car> findById(UUID id) {
         // TODO
         throw new UnsupportedOperationException("TODO: findById");
     }
@@ -34,7 +35,7 @@ public class CarRepository {
         throw new UnsupportedOperationException("TODO: save");
     }
 
-    public void deleteById(String id) {
+    public void deleteById(UUID id) {
         // TODO
         throw new UnsupportedOperationException("TODO: deleteById");
     }

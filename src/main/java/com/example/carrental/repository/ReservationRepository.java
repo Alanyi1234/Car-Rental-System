@@ -35,7 +35,7 @@ public class ReservationRepository {
     }
 
     /** Non-cancelled reservations for one car. */
-    public List<Reservation> findActiveByCarId(String carId) {
+    public List<Reservation> findActiveByCarId(UUID carId) {
         // TODO
         throw new UnsupportedOperationException("TODO: findActiveByCarId");
     }
