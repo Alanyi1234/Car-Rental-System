@@ -14,20 +14,19 @@ public class InMemoryReservationRepository implements ReservationRepository {
 
     @Override
     public void save(Reservation reservation) {
-        reservations.put(reservation.id(), reservation);
+        // TODO
+        throw new UnsupportedOperationException("TODO: save");
     }
 
     @Override
     public Optional<Reservation> findById(UUID id) {
-        return Optional.ofNullable(reservations.get(id));
+        // TODO
+        throw new UnsupportedOperationException("TODO: findById");
     }
 
     @Override
     public List<Reservation> findActiveByCarId(String carId) {
-        // Linear scan is fine at this size; a database would use an index on car_id.
-        return reservations.values().stream()
-                .filter(Reservation::isActive)
-                .filter(r -> r.car().id().equals(carId))
-                .toList();
+        // TODO
+        throw new UnsupportedOperationException("TODO: findActiveByCarId");
     }
 }

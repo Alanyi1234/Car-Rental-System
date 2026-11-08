@@ -1,6 +1,5 @@
 package com.example.carrental.controller;
 
-import com.example.carrental.domain.Reservation;
 import com.example.carrental.dto.ReservationRequest;
 import com.example.carrental.dto.ReservationResponse;
 import com.example.carrental.dto.ReservationUpdateRequest;
@@ -16,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.net.URI;
 import java.util.UUID;
 
 @RestController
@@ -29,28 +27,31 @@ public class ReservationController {
         this.rentalService = rentalService;
     }
 
+    /** Create a reservation. Should return 201 Created with a Location header. */
     @PostMapping
     public ResponseEntity<ReservationResponse> create(@Valid @RequestBody ReservationRequest request) {
-        Reservation reservation = rentalService.reserve(request.carType(), request.start(), request.days());
-        return ResponseEntity
-                .created(URI.create("/reservations/" + reservation.id()))
-                .body(ReservationResponse.from(reservation));
+        // TODO: call rentalService.reserve(...) and return 201 Created
+        throw new UnsupportedOperationException("TODO: POST /reservations");
     }
 
+    /** Get a reservation by id. */
     @GetMapping("/{id}")
     public ReservationResponse get(@PathVariable UUID id) {
-        return ReservationResponse.from(rentalService.getReservation(id));
+        // TODO: call rentalService.getReservation(id)
+        throw new UnsupportedOperationException("TODO: GET /reservations/{id}");
     }
 
+    /** Change the car type, start and/or length of a reservation. */
     @PatchMapping("/{id}")
     public ReservationResponse update(@PathVariable UUID id, @Valid @RequestBody ReservationUpdateRequest request) {
-        Reservation updated = rentalService.modify(id, request.carType(), request.start(), request.days());
-        return ReservationResponse.from(updated);
+        // TODO: call rentalService.modify(...)
+        throw new UnsupportedOperationException("TODO: PATCH /reservations/{id}");
     }
 
+    /** Cancel a reservation. Should return 204 No Content. */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> cancel(@PathVariable UUID id) {
-        rentalService.cancel(id);
-        return ResponseEntity.noContent().build();
+        // TODO: call rentalService.cancel(id) and return 204 No Content
+        throw new UnsupportedOperationException("TODO: DELETE /reservations/{id}");
     }
 }

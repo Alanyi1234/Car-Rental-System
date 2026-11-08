@@ -39,6 +39,12 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return problem(HttpStatus.BAD_REQUEST, "Invalid request", ex.getMessage());
     }
 
+    /** Stubbed endpoints throw this until they are implemented. */
+    @ExceptionHandler(UnsupportedOperationException.class)
+    public ProblemDetail handleNotImplemented(UnsupportedOperationException ex) {
+        return problem(HttpStatus.NOT_IMPLEMENTED, "Not implemented", ex.getMessage());
+    }
+
     private static ProblemDetail problem(HttpStatus status, String title, String detail) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(status, detail);
         pd.setTitle(title);
