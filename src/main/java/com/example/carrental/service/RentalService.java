@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -100,6 +101,16 @@ public class RentalService {
             result.put(type, free);
         }
         return result;
+    }
+
+    /** The individual cars that are free for the period. With no type (null), returns free cars of every type. */
+    public List<Car> availableCars(LocalDateTime start, int days, CarType type) {
+        LocalDateTime end = start.plusDays(days);
+
+        List<Car> cars = type != null ? carRepository.findByType(type) : carRepository.findAll();
+        return cars.stream()
+                .filter(car -> isFree(car, start, end, null))
+                .toList();
     }
 
     // --- helpers ---------------------------------------------------------------------------

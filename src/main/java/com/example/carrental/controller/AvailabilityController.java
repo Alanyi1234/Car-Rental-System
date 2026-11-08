@@ -1,7 +1,8 @@
 package com.example.carrental.controller;
 
-import com.example.carrental.model.CarType;
 import com.example.carrental.model.AvailabilityResponse;
+import com.example.carrental.model.Car;
+import com.example.carrental.model.CarType;
 import com.example.carrental.service.RentalService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @RestController
 public class AvailabilityController {
@@ -34,6 +36,15 @@ public class AvailabilityController {
             @RequestParam(required = false) CarType carType) {
         // TODO: call rentalService.availability(start, days) and build the response
         throw new UnsupportedOperationException("TODO: GET /availability");
+    }
+
+    /** The individual cars that are free for a period. With no type, returns free cars of every type. */
+    @GetMapping("/availability/cars")
+    public List<Car> availableCars(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
+            @RequestParam int days,
+            @RequestParam(required = false) CarType type) {
+        return rentalService.availableCars(start, days, type);
     }
 
     /** Bad input (missing or invalid fields, unreadable JSON, wrong parameter types) returns 400. */
