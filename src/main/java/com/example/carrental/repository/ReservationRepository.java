@@ -13,6 +13,16 @@ import java.util.UUID;
 @Repository
 public class ReservationRepository {
 
+    public List<Reservation> findAll() {
+        // TODO
+        throw new UnsupportedOperationException("TODO: findAll");
+    }
+
+    public void deleteById(UUID id) {
+        // TODO
+        throw new UnsupportedOperationException("TODO: deleteById");
+    }
+
     /** Inserts or updates a reservation. */
     public void save(Reservation reservation) {
         // TODO
