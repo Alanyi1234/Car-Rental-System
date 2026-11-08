@@ -2,15 +2,23 @@ package com.example.carrental.repository;
 
 import com.example.carrental.model.Car;
 import com.example.carrental.model.CarType;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
 /**
- * Where the fleet's cars are stored and looked up.
+ * Data access for the fleet's cars.
  */
-public interface CarRepository {
+@Repository
+public class CarRepository {
 
-    List<Car> findAll();
+    public List<Car> findAll() {
+        // TODO
+        throw new UnsupportedOperationException("TODO: findAll");
+    }
 
-    List<Car> findByType(CarType type);
+    public List<Car> findByType(CarType type) {
+        // TODO
+        throw new UnsupportedOperationException("TODO: findByType");
+    }
 }
