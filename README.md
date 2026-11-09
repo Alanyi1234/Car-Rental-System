@@ -26,5 +26,5 @@ See the [technical design](docs/tech-design.md) for the architecture, API and da
 controller/   REST endpoints: ReservationController, AvailabilityController
 service/      RentalService: reserve, getReservation, modify, cancel, availability, availableCars
 repository/   CarRepository, ReservationRepository (all data access goes through here)
-model/        Data types: Car, CarType, Reservation, ReservationStatus, request/response records
+model/        Data types: Car, CarType, Reservation, ReservationStatus, request and availability records
 ```

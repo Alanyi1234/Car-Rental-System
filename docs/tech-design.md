@@ -177,11 +177,9 @@ Location: /reservations/3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f
 
 {
   "id": "3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f",
-  "carId": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d",
-  "carType": "SUV",
+  "car": { "id": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d", "type": "SUV" },
   "start": "2030-12-01T10:00:00",
   "end": "2030-12-04T10:00:00",
-  "days": 3,
   "status": "ACTIVE"
 }
 ```
@@ -217,11 +215,9 @@ HTTP/1.1 200 OK
 
 {
   "id": "3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f",
-  "carId": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d",
-  "carType": "SUV",
+  "car": { "id": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d", "type": "SUV" },
   "start": "2030-12-01T10:00:00",
   "end": "2030-12-04T10:00:00",
-  "days": 3,
   "status": "ACTIVE"
 }
 ```
@@ -268,11 +264,9 @@ HTTP/1.1 200 OK
 
 {
   "id": "3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f",
-  "carId": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d",
-  "carType": "SUV",
+  "car": { "id": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d", "type": "SUV" },
   "start": "2030-12-01T10:00:00",
   "end": "2030-12-06T10:00:00",
-  "days": 5,
   "status": "ACTIVE"
 }
 ```
