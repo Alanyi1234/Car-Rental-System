@@ -48,7 +48,7 @@ flowchart TD
 
 | Layer | Responsibility |
 |---|---|
-| **Controller** | Receives HTTP requests, validates input, returns responses. No business rules. Each controller has `@ExceptionHandler`s: bad input returns 400, and any other unhandled error returns 500 with a short message. `ReservationController` also returns 404 for an unknown reservation id, and 409 when no car is available or someone else just booked it. |
+| **Controller** | Receives HTTP requests, validates input, returns responses. No business rules. Errors from every controller are handled in one place, `GlobalExceptionHandler` (`@RestControllerAdvice`): 400 for bad input, 404 for an unknown reservation, 409 when no car is available or someone else just booked it, and 500 for anything unexpected. |
 | **Service** | Business logic. `RentalService` handles the booking rules and calls the repositories for data. |
 | **Repository** | The only place that reads or writes data. |
 | **Model** | Plain data types shared by all layers. |
@@ -324,6 +324,7 @@ HTTP/1.1 204 No Content
 |---|---|
 | `ReservationController` | Create, view, change and cancel reservations |
 | `AvailabilityController` | Show how many cars of each type are free for a period |
+| `GlobalExceptionHandler` | Turns exceptions from any controller into 400 / 404 / 409 / 500 responses |
 
 ### 5.2 Services
 
