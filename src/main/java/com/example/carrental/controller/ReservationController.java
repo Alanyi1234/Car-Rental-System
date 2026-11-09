@@ -6,6 +6,8 @@ import com.example.carrental.model.ReservationUpdateRequest;
 import com.example.carrental.service.RentalService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -28,10 +30,15 @@ public class ReservationController {
         this.rentalService = rentalService;
     }
 
-    /** Create a reservation. Returns 201 Created with a Location header. */
+    /**
+     * Create a reservation for the logged-in user. Returns 201 Created with a Location header.
+     * The user id comes from the JWT's {@code sub} claim, not from the request body.
+     */
     @PostMapping
-    public ResponseEntity<Reservation> create(@Valid @RequestBody ReservationRequest request) {
-        Reservation reservation = rentalService.reserve(request.carType(), request.start(), request.days());
+    public ResponseEntity<Reservation> create(@Valid @RequestBody ReservationRequest request,
+                                              @AuthenticationPrincipal Jwt jwt) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+        Reservation reservation = rentalService.reserve(userId, request.carType(), request.start(), request.days());
         return ResponseEntity
                 .created(URI.create("/reservations/" + reservation.id()))
                 .body(reservation);

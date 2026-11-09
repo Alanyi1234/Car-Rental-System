@@ -36,8 +36,8 @@ public class RentalService {
         this.reservationRepository = reservationRepository;
     }
 
-    /** Reserves a car of the given type for {@code days} days starting at {@code start}. */
-    public Reservation reserve(CarType type, LocalDateTime start, int days) {
+    /** Reserves a car of the given type for {@code days} days starting at {@code start}, for the given user. */
+    public Reservation reserve(UUID userId, CarType type, LocalDateTime start, int days) {
         validateStart(start);
         validateDays(days);
         LocalDateTime end = start.plusDays(days);
@@ -45,7 +45,7 @@ public class RentalService {
         Car car = firstFreeCar(carRepository.findByType(type), start, end, null)
                 .orElseThrow(() -> new IllegalStateException("No " + type + " available for that period"));
 
-        Reservation reservation = new Reservation(UUID.randomUUID(), car, start, end, ReservationStatus.ACTIVE);
+        Reservation reservation = new Reservation(UUID.randomUUID(), userId, car, start, end, ReservationStatus.ACTIVE);
 
         // The DB constraint no_overlapping_bookings rejects overlapping bookings of the same car,
         // so if someone books it at the same moment, save throws and the controller returns 409.
@@ -89,6 +89,7 @@ public class RentalService {
 
         Reservation updated = new Reservation(
                 id,
+                current.userId(),
                 car.orElseThrow(() -> new IllegalStateException("No " + type + " available for that period")),
                 start, end, ReservationStatus.ACTIVE);
         reservationRepository.save(updated); // DB constraint may reject it -> 409 (see reserve)
@@ -100,7 +101,7 @@ public class RentalService {
         Reservation reservation = getReservation(id);
         if (reservation.status() == ReservationStatus.ACTIVE) {
             reservationRepository.save(new Reservation(
-                    reservation.id(), reservation.car(), reservation.start(), reservation.end(),
+                    reservation.id(), reservation.userId(), reservation.car(), reservation.start(), reservation.end(),
                     ReservationStatus.CANCELLED));
         }
     }

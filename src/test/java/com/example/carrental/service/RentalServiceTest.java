@@ -43,6 +43,7 @@ class RentalServiceTest {
     @InjectMocks
     private RentalService rentalService;
 
+    private final UUID userId = UUID.randomUUID();
     private final Car suv = new Car(UUID.randomUUID(), CarType.SUV);
 
     @Test
@@ -50,20 +51,21 @@ class RentalServiceTest {
         when(carRepository.findByType(CarType.SUV)).thenReturn(List.of(suv));
         when(reservationRepository.findActiveByCarId(suv.id())).thenReturn(List.of());
 
-        Reservation result = rentalService.reserve(CarType.SUV, START, 3);
+        Reservation result = rentalService.reserve(userId, CarType.SUV, START, 3);
 
         assertEquals(suv, result.car());
+        assertEquals(userId, result.userId());
         assertEquals(ReservationStatus.ACTIVE, result.status());
         verify(reservationRepository).save(result);
     }
 
     @Test
     void reserve_throwsWhenNoCarIsFree() {
-        Reservation existing = new Reservation(UUID.randomUUID(), suv, START, START.plusDays(3), ReservationStatus.ACTIVE);
+        Reservation existing = new Reservation(UUID.randomUUID(), userId, suv, START, START.plusDays(3), ReservationStatus.ACTIVE);
         when(carRepository.findByType(CarType.SUV)).thenReturn(List.of(suv));
         when(reservationRepository.findActiveByCarId(suv.id())).thenReturn(List.of(existing));
 
-        assertThrows(IllegalStateException.class, () -> rentalService.reserve(CarType.SUV, START, 3));
+        assertThrows(IllegalStateException.class, () -> rentalService.reserve(userId, CarType.SUV, START, 3));
         verify(reservationRepository, never()).save(any());
     }
 
@@ -77,7 +79,7 @@ class RentalServiceTest {
 
     @Test
     void cancel_savesReservationAsCancelled() {
-        Reservation existing = new Reservation(UUID.randomUUID(), suv, START, START.plusDays(3), ReservationStatus.ACTIVE);
+        Reservation existing = new Reservation(UUID.randomUUID(), userId, suv, START, START.plusDays(3), ReservationStatus.ACTIVE);
         when(reservationRepository.findById(existing.id())).thenReturn(Optional.of(existing));
 
         rentalService.cancel(existing.id());

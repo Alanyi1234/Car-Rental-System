@@ -67,6 +67,12 @@ flowchart TD
 Dates and times use ISO-8601 format, e.g. `2030-12-01T10:00:00`. The error codes below are
 the intended ones.
 
+**Authentication:** every request is assumed to carry a JWT
+(`Authorization: Bearer <token>`), verified by Spring Security. The user's id is read from the
+token's `sub` claim, never from the request body, so a client can't act as another user.
+Users themselves are managed by the identity provider that issues the tokens. A missing or
+invalid token returns **401 Unauthorized**.
+
 ### 4.1 Check availability – `GET /availability`
 
 Shows how many cars of each type are free for the whole period. Used to show options
@@ -149,8 +155,8 @@ HTTP/1.1 200 OK
 
 ### 4.3 Create a reservation – `POST /reservations`
 
-Reserves one car of the requested type. The system picks a specific car that is free for
-the whole period.
+Reserves one car of the requested type for the logged-in user. The system picks a specific car
+that is free for the whole period, and records the user id from the JWT on the reservation.
 
 **Handled by:** `ReservationController.create` → `RentalService.reserve`
 
@@ -166,6 +172,7 @@ the whole period.
 
 ```http
 POST /reservations
+Authorization: Bearer <token>
 Content-Type: application/json
 
 { "carType": "SUV", "start": "2030-12-01T10:00:00", "days": 3 }
@@ -177,6 +184,7 @@ Location: /reservations/3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f
 
 {
   "id": "3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f",
+  "userId": "5a7c2e91-0b4d-4f6a-8c3e-7d9b1f2a4e60",
   "car": { "id": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d", "type": "SUV" },
   "start": "2030-12-01T10:00:00",
   "end": "2030-12-04T10:00:00",
@@ -190,6 +198,7 @@ Location: /reservations/3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f
 |---|---|
 | 201 Created | Reservation made; `Location` header points to it |
 | 400 Bad Request | Missing or invalid fields, start in the past |
+| 401 Unauthorized | Missing or invalid JWT |
 | 409 Conflict | No car of that type is free for the period, or someone else booked it at the same moment |
 
 ### 4.4 Get a reservation – `GET /reservations/{id}`
@@ -215,6 +224,7 @@ HTTP/1.1 200 OK
 
 {
   "id": "3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f",
+  "userId": "5a7c2e91-0b4d-4f6a-8c3e-7d9b1f2a4e60",
   "car": { "id": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d", "type": "SUV" },
   "start": "2030-12-01T10:00:00",
   "end": "2030-12-04T10:00:00",
@@ -264,6 +274,7 @@ HTTP/1.1 200 OK
 
 {
   "id": "3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f",
+  "userId": "5a7c2e91-0b4d-4f6a-8c3e-7d9b1f2a4e60",
   "car": { "id": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d", "type": "SUV" },
   "start": "2030-12-01T10:00:00",
   "end": "2030-12-06T10:00:00",
@@ -343,6 +354,7 @@ classDiagram
     }
     class Reservation {
         UUID id
+        UUID userId
         Car car
         LocalDateTime start
         LocalDateTime end
@@ -365,8 +377,8 @@ classDiagram
 ```
 
 - A **Car** is one physical car of a given type, identified by a UUID.
-- A **Reservation** books one car from `start` to `end`. Cancelling changes its status
-  rather than deleting it.
+- A **Reservation** books one car from `start` to `end` for one user (`userId`, from the JWT).
+  Cancelling changes its status rather than deleting it.
 
 ### Database tables
 
@@ -375,7 +387,7 @@ Each repository reads and writes one table.
 | Repository | Table | Columns |
 |---|---|---|
 | `CarRepository` | `cars` | `id` (PK), `type` |
-| `ReservationRepository` | `reservations` | `id` (PK), `car_id` (FK → `cars.id`), `start_time`, `end_time`, `status` |
+| `ReservationRepository` | `reservations` | `id` (PK), `user_id`, `car_id` (FK → `cars.id`), `start_time`, `end_time`, `status` |
 
 ```mermaid
 erDiagram
@@ -386,6 +398,7 @@ erDiagram
     }
     reservations {
         uuid id PK
+        uuid user_id
         uuid car_id FK
         datetime start_time
         datetime end_time
@@ -394,6 +407,8 @@ erDiagram
 ```
 
 A car can have many reservations over time; each reservation is for exactly one car.
+
+`user_id` has no foreign key: users live in the identity provider, not in this database.
 
 ## 7. Main flow: reserving a car
 
