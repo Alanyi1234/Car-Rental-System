@@ -6,7 +6,6 @@ import com.example.carrental.model.Reservation;
 import com.example.carrental.model.ReservationStatus;
 import com.example.carrental.repository.CarRepository;
 import com.example.carrental.repository.ReservationRepository;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -23,8 +22,8 @@ import java.util.UUID;
  * CarRepository and ReservationRepository.
  *
  * <p>Concurrency: nothing is locked. A database constraint rejects overlapping active bookings
- * of the same car, so if two requests race, one succeeds and the other gets a 409 Conflict.
- * "No availability" and "conflict" are signalled with IllegalStateException.
+ * of the same car, so if two requests race, one save succeeds and the other throws
+ * DataIntegrityViolationException, which the controller returns as 409 Conflict.
  */
 @Service
 public class RentalService {
@@ -49,12 +48,8 @@ public class RentalService {
         Reservation reservation = new Reservation(UUID.randomUUID(), car, start, end, ReservationStatus.ACTIVE);
 
         // The DB constraint no_overlapping_bookings rejects overlapping bookings of the same car,
-        // so if someone books it at the same moment, the save fails and we return 409.
-        try {
-            reservationRepository.save(reservation);
-        } catch (DataIntegrityViolationException e) {
-            throw new IllegalStateException("That " + type + " was just booked by someone else");
-        }
+        // so if someone books it at the same moment, save throws and the controller returns 409.
+        reservationRepository.save(reservation);
         return reservation;
     }
 
@@ -96,12 +91,7 @@ public class RentalService {
                 id,
                 car.orElseThrow(() -> new IllegalStateException("No " + type + " available for that period")),
                 start, end, ReservationStatus.ACTIVE);
-        try {
-            reservationRepository.save(updated);
-        } catch (DataIntegrityViolationException e) {
-            // Someone else booked that car for an overlapping period at the same moment.
-            throw new IllegalStateException("No " + type + " available for that period");
-        }
+        reservationRepository.save(updated); // DB constraint may reject it -> 409 (see reserve)
         return updated;
     }
 

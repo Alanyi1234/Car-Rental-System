@@ -6,6 +6,7 @@ import com.example.carrental.model.ReservationResponse;
 import com.example.carrental.model.ReservationUpdateRequest;
 import com.example.carrental.service.RentalService;
 import jakarta.validation.Valid;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -91,9 +92,15 @@ public class ReservationController {
     }
 
     /** 409 Conflict: the request is valid but can't be done right now. */
-    @ExceptionHandler(IllegalStateException.class)  // no car free, someone just booked it (DB constraint), or reservation is cancelled
-    public ResponseEntity<String> handleConflict(IllegalStateException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
+    @ExceptionHandler({
+            IllegalStateException.class,           // no car free, or reservation is cancelled
+            DataIntegrityViolationException.class  // DB constraint rejected an overlapping booking
+    })
+    public ResponseEntity<String> handleConflict(Exception ex) {
+        String message = ex instanceof DataIntegrityViolationException
+                ? "That car was just booked by someone else"
+                : ex.getMessage();
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(message);
     }
 
     /** 500 Internal Server Error: anything not handled above. */
