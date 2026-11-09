@@ -48,7 +48,7 @@ flowchart TD
 
 | Layer | Responsibility |
 |---|---|
-| **Controller** | Receives HTTP requests, validates input, returns responses. No business rules. Each controller has `@ExceptionHandler`s: bad input returns 400, and any other unhandled error returns 500 with a short message. `ReservationController` also returns 409 when no car is available or someone else just booked it. |
+| **Controller** | Receives HTTP requests, validates input, returns responses. No business rules. Each controller has `@ExceptionHandler`s: bad input returns 400, and any other unhandled error returns 500 with a short message. `ReservationController` also returns 404 for an unknown reservation id, and 409 when no car is available or someone else just booked it. |
 | **Service** | Business logic. `RentalService` handles the booking rules and calls the repositories for data. |
 | **Repository** | The only place that reads or writes data. |
 | **Model** | Plain data types shared by all layers. |
@@ -78,7 +78,7 @@ before booking. It is a snapshot only: it does not hold a car.
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `start` | date-time | Yes | Start of the rental |
+| `start` | date-time | Yes | Start of the rental, not in the past |
 | `days` | integer | Yes | Number of days, at least 1 |
 | `carType` | `SEDAN` / `SUV` / `VAN` | No | Only show this type |
 
@@ -107,7 +107,7 @@ HTTP/1.1 200 OK
 | Status | When |
 |---|---|
 | 200 OK | Availability returned |
-| 400 Bad Request | Missing or invalid `start`/`days`, unknown `carType` |
+| 400 Bad Request | Missing or invalid `start`/`days`, start in the past, unknown `carType` |
 
 ### 4.2 List available cars – `GET /availability/cars`
 
@@ -121,14 +121,14 @@ this list could be paginated (e.g. `page` and `size` parameters).
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `start` | date-time | Yes | Start of the rental |
+| `start` | date-time | Yes | Start of the rental, not in the past |
 | `days` | integer | Yes | Number of days, at least 1 |
-| `type` | `SEDAN` / `SUV` / `VAN` | No | Only show cars of this type. If omitted, returns the free cars of every type. |
+| `carType` | `SEDAN` / `SUV` / `VAN` | No | Only show cars of this type. If omitted, returns the free cars of every type. |
 
 **Example**
 
 ```http
-GET /availability/cars?start=2030-12-01T10:00:00&days=3&type=SUV
+GET /availability/cars?start=2030-12-01T10:00:00&days=3&carType=SUV
 ```
 
 ```http
@@ -145,7 +145,7 @@ HTTP/1.1 200 OK
 | Status | When |
 |---|---|
 | 200 OK | List returned (empty if nothing is free) |
-| 400 Bad Request | Missing or invalid `start`/`days`, unknown `type` |
+| 400 Bad Request | Missing or invalid `start`/`days`, start in the past, unknown `carType` |
 
 ### 4.3 Create a reservation – `POST /reservations`
 
@@ -159,7 +159,7 @@ the whole period.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `carType` | `SEDAN` / `SUV` / `VAN` | Yes | Type of car wanted |
-| `start` | date-time | Yes | Start of the rental |
+| `start` | date-time | Yes | Start of the rental, not in the past |
 | `days` | integer | Yes | Number of days, at least 1 |
 
 **Example**
@@ -191,7 +191,7 @@ Location: /reservations/3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f
 | Status | When |
 |---|---|
 | 201 Created | Reservation made; `Location` header points to it |
-| 400 Bad Request | Missing or invalid fields |
+| 400 Bad Request | Missing or invalid fields, start in the past |
 | 409 Conflict | No car of that type is free for the period, or someone else booked it at the same moment |
 
 ### 4.4 Get a reservation – `GET /reservations/{id}`
@@ -251,7 +251,7 @@ change can't be made, the original reservation stays as it was.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `carType` | `SEDAN` / `SUV` / `VAN` | No | New car type |
-| `start` | date-time | No | New start |
+| `start` | date-time | No | New start, not in the past |
 | `days` | integer | No | New number of days, at least 1 |
 
 **Example** – extend to 5 days
@@ -282,7 +282,7 @@ HTTP/1.1 200 OK
 | Status | When |
 |---|---|
 | 200 OK | Reservation updated |
-| 400 Bad Request | Invalid fields |
+| 400 Bad Request | Invalid fields, new start in the past |
 | 404 Not Found | No reservation with that id |
 | 409 Conflict | No car free for the new period, or the reservation is cancelled |
 
@@ -458,7 +458,3 @@ and rejects the other (`DataIntegrityViolationException`). The losing request ge
   even if the application logic has a bug.
 - Conflicts on the exact same car at the exact same moment are rare in car rental, so 409s
   from this are rare too.
-
-**At larger scale:** booking systems often add per-type inventory counters (an atomic "take one
-if any are left" update) and temporary holds during checkout, while keeping this constraint as
-the final safety net.

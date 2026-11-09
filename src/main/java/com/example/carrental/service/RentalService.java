@@ -39,6 +39,8 @@ public class RentalService {
 
     /** Reserves a car of the given type for {@code days} days starting at {@code start}. */
     public Reservation reserve(CarType type, LocalDateTime start, int days) {
+        validateStart(start);
+        validateDays(days);
         LocalDateTime end = start.plusDays(days);
 
         Car car = firstFreeCar(carRepository.findByType(type), start, end, null)
@@ -67,6 +69,13 @@ public class RentalService {
         Reservation current = getReservation(id);
         if (current.status() == ReservationStatus.CANCELLED) {
             throw new IllegalStateException("Reservation " + id + " is cancelled");
+        }
+
+        if (newStart != null) {
+            validateStart(newStart); // only a new start must be in the future
+        }
+        if (newDays != null) {
+            validateDays(newDays);
         }
 
         CarType type = newType != null ? newType : current.car().type();
@@ -108,6 +117,8 @@ public class RentalService {
 
     /** Number of free cars per type for the period. */
     public Map<CarType, Integer> availability(LocalDateTime start, int days) {
+        validateStart(start);
+        validateDays(days);
         LocalDateTime end = start.plusDays(days);
 
         Map<CarType, Integer> result = new EnumMap<>(CarType.class);
@@ -122,6 +133,8 @@ public class RentalService {
 
     /** The individual cars that are free for the period. With no type (null), returns free cars of every type. */
     public List<Car> availableCars(LocalDateTime start, int days, CarType type) {
+        validateStart(start);
+        validateDays(days);
         LocalDateTime end = start.plusDays(days);
 
         List<Car> cars = type != null ? carRepository.findByType(type) : carRepository.findAll();
@@ -131,6 +144,20 @@ public class RentalService {
     }
 
     // --- helpers ---------------------------------------------------------------------------
+
+    /** Rejects a start in the past (returned to the client as 400). */
+    private static void validateStart(LocalDateTime start) {
+        if (start.isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("start must not be in the past");
+        }
+    }
+
+    /** Rejects zero or negative days (returned to the client as 400). */
+    private static void validateDays(int days) {
+        if (days < 1) {
+            throw new IllegalArgumentException("days must be at least 1");
+        }
+    }
 
     /** First car in the list with no overlapping active reservation. */
     private Optional<Car> firstFreeCar(List<Car> cars, LocalDateTime start, LocalDateTime end, UUID ignoreReservationId) {

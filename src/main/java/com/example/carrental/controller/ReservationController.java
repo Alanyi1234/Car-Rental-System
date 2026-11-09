@@ -1,5 +1,6 @@
 package com.example.carrental.controller;
 
+import com.example.carrental.model.Reservation;
 import com.example.carrental.model.ReservationRequest;
 import com.example.carrental.model.ReservationResponse;
 import com.example.carrental.model.ReservationUpdateRequest;
@@ -21,6 +22,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import java.net.URI;
+import java.time.Duration;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 
 @RestController
@@ -33,54 +37,67 @@ public class ReservationController {
         this.rentalService = rentalService;
     }
 
-    /** Create a reservation. Should return 201 Created with a Location header. */
+    /** Create a reservation. Returns 201 Created with a Location header. */
     @PostMapping
     public ResponseEntity<ReservationResponse> create(@Valid @RequestBody ReservationRequest request) {
-        // TODO: call rentalService.reserve(...) and return 201 Created
-        throw new UnsupportedOperationException("TODO: POST /reservations");
+        Reservation reservation = rentalService.reserve(request.carType(), request.start(), request.days());
+        return ResponseEntity
+                .created(URI.create("/reservations/" + reservation.id()))
+                .body(toResponse(reservation));
     }
 
     /** Get a reservation by id. */
     @GetMapping("/{id}")
     public ReservationResponse get(@PathVariable UUID id) {
-        // TODO: call rentalService.getReservation(id)
-        throw new UnsupportedOperationException("TODO: GET /reservations/{id}");
+        return toResponse(rentalService.getReservation(id));
     }
 
     /** Change the car type, start and/or length of a reservation. */
     @PatchMapping("/{id}")
     public ReservationResponse update(@PathVariable UUID id, @Valid @RequestBody ReservationUpdateRequest request) {
-        // TODO: call rentalService.modify(...)
-        throw new UnsupportedOperationException("TODO: PATCH /reservations/{id}");
+        return toResponse(rentalService.modify(id, request.carType(), request.start(), request.days()));
     }
 
-    /** Cancel a reservation. Should return 204 No Content. */
+    /** Cancel a reservation. Returns 204 No Content. */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> cancel(@PathVariable UUID id) {
-        // TODO: call rentalService.cancel(id) and return 204 No Content
-        throw new UnsupportedOperationException("TODO: DELETE /reservations/{id}");
+        rentalService.cancel(id);
+        return ResponseEntity.noContent().build();
     }
 
-    /** Bad input (missing or invalid fields, unreadable JSON, wrong parameter types) returns 400. */
+    /** Converts the domain Reservation into the API response. */
+    private static ReservationResponse toResponse(Reservation r) {
+        int days = (int) Duration.between(r.start(), r.end()).toDays();
+        return new ReservationResponse(r.id(), r.car().id(), r.car().type(), r.start(), r.end(), days, r.status());
+    }
+
+    /** 400 Bad Request: the client sent invalid input. */
     @ExceptionHandler({
-            MethodArgumentNotValidException.class,
-            HttpMessageNotReadableException.class,
-            MissingServletRequestParameterException.class,
-            MethodArgumentTypeMismatchException.class
+            MethodArgumentNotValidException.class,          // body field fails validation, e.g. missing carType or days < 1
+            HttpMessageNotReadableException.class,          // body isn't valid JSON, or has an unknown value like "TRUCK"
+            MissingServletRequestParameterException.class,  // required query param missing, e.g. no start
+            MethodArgumentTypeMismatchException.class,      // param has the wrong type, e.g. id isn't a UUID
+            IllegalArgumentException.class                  // service rule broken: start in the past or days < 1
     })
     public ResponseEntity<String> handleBadRequest(Exception ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body("Invalid request: " + ex.getMessage());
     }
 
-    /** No car available, or someone else just booked it (DB constraint), returns 409. */
-    @ExceptionHandler(IllegalStateException.class)
+    /** 404 Not Found: no reservation with that id. */
+    @ExceptionHandler(NoSuchElementException.class)  // thrown by RentalService.getReservation
+    public ResponseEntity<String> handleNotFound(NoSuchElementException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    }
+
+    /** 409 Conflict: the request is valid but can't be done right now. */
+    @ExceptionHandler(IllegalStateException.class)  // no car free, someone just booked it (DB constraint), or reservation is cancelled
     public ResponseEntity<String> handleConflict(IllegalStateException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
     }
 
-    /** Generic fallback: any unhandled error returns 500 with a short message. */
-    @ExceptionHandler(Exception.class)
+    /** 500 Internal Server Error: anything not handled above. */
+    @ExceptionHandler(Exception.class)  // catch-all for unexpected errors
     public ResponseEntity<String> handleError(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("Something went wrong: " + ex.getMessage());
