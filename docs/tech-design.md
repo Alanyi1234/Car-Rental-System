@@ -468,10 +468,6 @@ and rejects the other (`DataIntegrityViolationException`). The losing request ge
 
 **Why this approach:**
 - Nothing is locked, so requests never wait for each other, even for popular car types.
-- The guarantee lives in the database, so it holds across any number of app servers and
-  even if the application logic has a bug.
-- Conflicts on the exact same car at the exact same moment are rare in car rental, so 409s
-  from this are rare too.
 
 ## 9. Improvements
 
