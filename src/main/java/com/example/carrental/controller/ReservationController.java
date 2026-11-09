@@ -20,6 +20,11 @@ import org.springframework.web.bind.annotation.RestController;
 import java.net.URI;
 import java.util.UUID;
 
+/**
+ * All /reservations endpoints assume the caller is authenticated with a JWT. In production, a
+ * Spring Security config (not included here) would reject requests without a valid token (401)
+ * before they reach this controller.
+ */
 @RestController
 @RequestMapping("/reservations")
 public class ReservationController {
@@ -45,18 +50,21 @@ public class ReservationController {
     }
 
     /** Get a reservation by id. */
+    // TODO (auth): read the user from the JWT and return 404 if the reservation isn't theirs.
     @GetMapping("/{id}")
     public Reservation get(@PathVariable UUID id) {
         return rentalService.getReservation(id);
     }
 
     /** Change the car type, start and/or length of a reservation. */
+    // TODO (auth): read the user from the JWT and return 404 if the reservation isn't theirs.
     @PatchMapping("/{id}")
     public Reservation update(@PathVariable UUID id, @Valid @RequestBody ReservationUpdateRequest request) {
         return rentalService.modify(id, request.carType(), request.start(), request.days());
     }
 
     /** Cancel a reservation. Returns 204 No Content. */
+    // TODO (auth): read the user from the JWT and return 404 if the reservation isn't theirs.
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> cancel(@PathVariable UUID id) {
         rentalService.cancel(id);

@@ -67,11 +67,12 @@ flowchart TD
 Dates and times use ISO-8601 format, e.g. `2030-12-01T10:00:00`. The error codes below are
 the intended ones.
 
-**Authentication:** every request is assumed to carry a JWT
+**Authentication:** the availability endpoints (4.1, 4.2) are public, so anyone can browse
+before logging in. The reservation endpoints (4.3–4.6) require a JWT
 (`Authorization: Bearer <token>`), verified by Spring Security. The user's id is read from the
 token's `sub` claim, never from the request body, so a client can't act as another user.
 Users themselves are managed by the identity provider that issues the tokens. A missing or
-invalid token returns **401 Unauthorized**.
+invalid token on a reservation endpoint returns **401 Unauthorized**.
 
 ### 4.1 Check availability – `GET /availability`
 
@@ -237,6 +238,7 @@ HTTP/1.1 200 OK
 | Status | When |
 |---|---|
 | 200 OK | Reservation returned |
+| 401 Unauthorized | Missing or invalid JWT |
 | 404 Not Found | No reservation with that id |
 
 ### 4.5 Modify a reservation – `PATCH /reservations/{id}`
@@ -288,6 +290,7 @@ HTTP/1.1 200 OK
 |---|---|
 | 200 OK | Reservation updated |
 | 400 Bad Request | Invalid fields, new start in the past |
+| 401 Unauthorized | Missing or invalid JWT |
 | 404 Not Found | No reservation with that id |
 | 409 Conflict | No car free for the new period, or the reservation is cancelled |
 
@@ -319,6 +322,7 @@ HTTP/1.1 204 No Content
 | Status | When |
 |---|---|
 | 204 No Content | Reservation cancelled (or was already cancelled) |
+| 401 Unauthorized | Missing or invalid JWT |
 | 404 Not Found | No reservation with that id |
 
 ## 5. Components
