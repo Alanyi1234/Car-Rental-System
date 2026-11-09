@@ -14,7 +14,7 @@ See the [technical design](docs/tech-design.md) for the architecture, API and da
 | Method | Path | Purpose |
 |---|---|---|
 | GET | `/availability?start=…&days=…[&carType=…]` | Free cars per type for a period |
-| GET | `/availability/cars?start=…&days=…[&type=…]` | The individual free cars for a period |
+| GET | `/availability/cars?start=…&days=…[&carType=…]` | The individual free cars for a period |
 | POST | `/reservations` | Reserve a car of a type |
 | GET | `/reservations/{id}` | View a reservation |
 | PATCH | `/reservations/{id}` | Change type, start and/or days |
@@ -26,5 +26,5 @@ See the [technical design](docs/tech-design.md) for the architecture, API and da
 controller/   REST endpoints: ReservationController, AvailabilityController
 service/      RentalService: reserve, getReservation, modify, cancel, availability, availableCars
 repository/   CarRepository, ReservationRepository (all data access goes through here)
-model/        Data types: Car, CarType, Reservation, ReservationStatus, request/response records
+model/        Data types: Car, CarType, Reservation, ReservationStatus, request and availability records
 ```

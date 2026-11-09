@@ -20,6 +20,10 @@ import java.util.UUID;
 /**
  * Booking logic (reserve, modify, cancel, availability). All data access goes through
  * CarRepository and ReservationRepository.
+ *
+ * <p>Concurrency: nothing is locked. A database constraint rejects overlapping active bookings
+ * of the same car, so if two requests race, one save succeeds and the other throws
+ * DataIntegrityViolationException, which the controller returns as 409 Conflict.
  */
 @Service
 public class RentalService {
@@ -34,12 +38,17 @@ public class RentalService {
 
     /** Reserves a car of the given type for {@code days} days starting at {@code start}. */
     public Reservation reserve(CarType type, LocalDateTime start, int days) {
+        validateStart(start);
+        validateDays(days);
         LocalDateTime end = start.plusDays(days);
 
-        Car car = findFreeCar(type, start, end, null)
+        Car car = firstFreeCar(carRepository.findByType(type), start, end, null)
                 .orElseThrow(() -> new IllegalStateException("No " + type + " available for that period"));
 
         Reservation reservation = new Reservation(UUID.randomUUID(), car, start, end, ReservationStatus.ACTIVE);
+
+        // The DB constraint no_overlapping_bookings rejects overlapping bookings of the same car,
+        // so if someone books it at the same moment, save throws and the controller returns 409.
         reservationRepository.save(reservation);
         return reservation;
     }
@@ -57,6 +66,13 @@ public class RentalService {
             throw new IllegalStateException("Reservation " + id + " is cancelled");
         }
 
+        if (newStart != null) {
+            validateStart(newStart); // only a new start must be in the future
+        }
+        if (newDays != null) {
+            validateDays(newDays);
+        }
+
         CarType type = newType != null ? newType : current.car().type();
         LocalDateTime start = newStart != null ? newStart : current.start();
         int days = newDays != null ? newDays : (int) Duration.between(current.start(), current.end()).toDays();
@@ -68,14 +84,14 @@ public class RentalService {
             car = Optional.of(current.car());
         }
         if (car.isEmpty()) {
-            car = findFreeCar(type, start, end, id);
+            car = firstFreeCar(carRepository.findByType(type), start, end, id);
         }
 
         Reservation updated = new Reservation(
                 id,
                 car.orElseThrow(() -> new IllegalStateException("No " + type + " available for that period")),
                 start, end, ReservationStatus.ACTIVE);
-        reservationRepository.save(updated);
+        reservationRepository.save(updated); // DB constraint may reject it -> 409 (see reserve)
         return updated;
     }
 
@@ -91,6 +107,8 @@ public class RentalService {
 
     /** Number of free cars per type for the period. */
     public Map<CarType, Integer> availability(LocalDateTime start, int days) {
+        validateStart(start);
+        validateDays(days);
         LocalDateTime end = start.plusDays(days);
 
         Map<CarType, Integer> result = new EnumMap<>(CarType.class);
@@ -105,6 +123,8 @@ public class RentalService {
 
     /** The individual cars that are free for the period. With no type (null), returns free cars of every type. */
     public List<Car> availableCars(LocalDateTime start, int days, CarType type) {
+        validateStart(start);
+        validateDays(days);
         LocalDateTime end = start.plusDays(days);
 
         List<Car> cars = type != null ? carRepository.findByType(type) : carRepository.findAll();
@@ -115,9 +135,23 @@ public class RentalService {
 
     // --- helpers ---------------------------------------------------------------------------
 
-    /** First car of the type with no overlapping active reservation. */
-    private Optional<Car> findFreeCar(CarType type, LocalDateTime start, LocalDateTime end, UUID ignoreReservationId) {
-        return carRepository.findByType(type).stream()
+    /** Rejects a start in the past (returned to the client as 400). */
+    private static void validateStart(LocalDateTime start) {
+        if (start.isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("start must not be in the past");
+        }
+    }
+
+    /** Rejects zero or negative days (returned to the client as 400). */
+    private static void validateDays(int days) {
+        if (days < 1) {
+            throw new IllegalArgumentException("days must be at least 1");
+        }
+    }
+
+    /** First car in the list with no overlapping active reservation. */
+    private Optional<Car> firstFreeCar(List<Car> cars, LocalDateTime start, LocalDateTime end, UUID ignoreReservationId) {
+        return cars.stream()
                 .filter(car -> isFree(car, start, end, ignoreReservationId))
                 .findFirst();
     }

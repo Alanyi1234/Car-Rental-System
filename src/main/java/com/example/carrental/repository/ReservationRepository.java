@@ -23,7 +23,10 @@ public class ReservationRepository {
         throw new UnsupportedOperationException("TODO: deleteById");
     }
 
-    /** Inserts or updates a reservation. */
+    /**
+     * Inserts or updates a reservation. Throws DataIntegrityViolationException if the database
+     * constraint rejects it because it overlaps another active booking of the same car.
+     */
     public void save(Reservation reservation) {
         // TODO
         throw new UnsupportedOperationException("TODO: save");

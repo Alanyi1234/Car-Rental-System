@@ -9,17 +9,18 @@ A simulated car rental system. Customers can see which cars are free for a perio
 car of a given type for a start date/time and a number of days, change a reservation, and
 cancel it. The number of cars of each type is limited.
 
-## 2. Goals and non-goals
+## 2. Goals and future additions
 
 **Goals**
 - Model the rental domain with clear object-oriented layers.
 - Expose the main actions as a REST API.
 - Keep all data access behind a repository layer.
 
-**Non-goals (for now)**
-- Payments, customer accounts and authentication.
-- Multiple rental locations or time zones.
-- A specific database. The repositories define the data access, not the storage technology.
+**Future additions**
+- **Pricing:** a price per day for each car, so reservations and availability can show the
+  total cost.
+- **Locations:** multiple rental locations, so a customer can choose where to pick up and
+  drop off the car (possibly different places).
 
 ## 3. Architecture
 
@@ -47,7 +48,7 @@ flowchart TD
 
 | Layer | Responsibility |
 |---|---|
-| **Controller** | Receives HTTP requests, validates input, returns responses. No business rules. Each controller has two `@ExceptionHandler`s: bad input returns 400, and any other unhandled error returns 500 with a short message. |
+| **Controller** | Receives HTTP requests, validates input, returns responses. No business rules. Errors from every controller are handled in one place, `GlobalExceptionHandler` (`@RestControllerAdvice`): 400 for bad input, 404 for an unknown reservation, 409 when no car is available or someone else just booked it, and 500 for anything unexpected. |
 | **Service** | Business logic. `RentalService` handles the booking rules and calls the repositories for data. |
 | **Repository** | The only place that reads or writes data. |
 | **Model** | Plain data types shared by all layers. |
@@ -77,7 +78,7 @@ before booking. It is a snapshot only: it does not hold a car.
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `start` | date-time | Yes | Start of the rental |
+| `start` | date-time | Yes | Start of the rental, not in the past |
 | `days` | integer | Yes | Number of days, at least 1 |
 | `carType` | `SEDAN` / `SUV` / `VAN` | No | Only show this type |
 
@@ -106,7 +107,7 @@ HTTP/1.1 200 OK
 | Status | When |
 |---|---|
 | 200 OK | Availability returned |
-| 400 Bad Request | Missing or invalid `start`/`days`, unknown `carType` |
+| 400 Bad Request | Missing or invalid `start`/`days`, start in the past, unknown `carType` |
 
 ### 4.2 List available cars – `GET /availability/cars`
 
@@ -120,14 +121,14 @@ this list could be paginated (e.g. `page` and `size` parameters).
 
 | Name | Type | Required | Description |
 |---|---|---|---|
-| `start` | date-time | Yes | Start of the rental |
+| `start` | date-time | Yes | Start of the rental, not in the past |
 | `days` | integer | Yes | Number of days, at least 1 |
-| `type` | `SEDAN` / `SUV` / `VAN` | No | Only show cars of this type. If omitted, returns the free cars of every type. |
+| `carType` | `SEDAN` / `SUV` / `VAN` | No | Only show cars of this type. If omitted, returns the free cars of every type. |
 
 **Example**
 
 ```http
-GET /availability/cars?start=2030-12-01T10:00:00&days=3&type=SUV
+GET /availability/cars?start=2030-12-01T10:00:00&days=3&carType=SUV
 ```
 
 ```http
@@ -144,7 +145,7 @@ HTTP/1.1 200 OK
 | Status | When |
 |---|---|
 | 200 OK | List returned (empty if nothing is free) |
-| 400 Bad Request | Missing or invalid `start`/`days`, unknown `type` |
+| 400 Bad Request | Missing or invalid `start`/`days`, start in the past, unknown `carType` |
 
 ### 4.3 Create a reservation – `POST /reservations`
 
@@ -158,7 +159,7 @@ the whole period.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `carType` | `SEDAN` / `SUV` / `VAN` | Yes | Type of car wanted |
-| `start` | date-time | Yes | Start of the rental |
+| `start` | date-time | Yes | Start of the rental, not in the past |
 | `days` | integer | Yes | Number of days, at least 1 |
 
 **Example**
@@ -176,11 +177,9 @@ Location: /reservations/3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f
 
 {
   "id": "3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f",
-  "carId": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d",
-  "carType": "SUV",
+  "car": { "id": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d", "type": "SUV" },
   "start": "2030-12-01T10:00:00",
   "end": "2030-12-04T10:00:00",
-  "days": 3,
   "status": "ACTIVE"
 }
 ```
@@ -190,8 +189,8 @@ Location: /reservations/3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f
 | Status | When |
 |---|---|
 | 201 Created | Reservation made; `Location` header points to it |
-| 400 Bad Request | Missing or invalid fields |
-| 409 Conflict | No car of that type is free for the period |
+| 400 Bad Request | Missing or invalid fields, start in the past |
+| 409 Conflict | No car of that type is free for the period, or someone else booked it at the same moment |
 
 ### 4.4 Get a reservation – `GET /reservations/{id}`
 
@@ -216,11 +215,9 @@ HTTP/1.1 200 OK
 
 {
   "id": "3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f",
-  "carId": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d",
-  "carType": "SUV",
+  "car": { "id": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d", "type": "SUV" },
   "start": "2030-12-01T10:00:00",
   "end": "2030-12-04T10:00:00",
-  "days": 3,
   "status": "ACTIVE"
 }
 ```
@@ -250,7 +247,7 @@ change can't be made, the original reservation stays as it was.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `carType` | `SEDAN` / `SUV` / `VAN` | No | New car type |
-| `start` | date-time | No | New start |
+| `start` | date-time | No | New start, not in the past |
 | `days` | integer | No | New number of days, at least 1 |
 
 **Example** – extend to 5 days
@@ -267,11 +264,9 @@ HTTP/1.1 200 OK
 
 {
   "id": "3f2a9c1e-5b7d-4e2a-9f4c-1a2b3c4d5e6f",
-  "carId": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d",
-  "carType": "SUV",
+  "car": { "id": "8d1e4b2a-7c3f-4a9e-b5d6-2f1a0c9e8b7d", "type": "SUV" },
   "start": "2030-12-01T10:00:00",
   "end": "2030-12-06T10:00:00",
-  "days": 5,
   "status": "ACTIVE"
 }
 ```
@@ -281,7 +276,7 @@ HTTP/1.1 200 OK
 | Status | When |
 |---|---|
 | 200 OK | Reservation updated |
-| 400 Bad Request | Invalid fields |
+| 400 Bad Request | Invalid fields, new start in the past |
 | 404 Not Found | No reservation with that id |
 | 409 Conflict | No car free for the new period, or the reservation is cancelled |
 
@@ -323,6 +318,7 @@ HTTP/1.1 204 No Content
 |---|---|
 | `ReservationController` | Create, view, change and cancel reservations |
 | `AvailabilityController` | Show how many cars of each type are free for a period |
+| `GlobalExceptionHandler` | Turns exceptions from any controller into 400 / 404 / 409 / 500 responses |
 
 ### 5.2 Services
 
@@ -406,7 +402,9 @@ A car can have many reservations over time; each reservation is for exactly one 
 3. `RentalService` gets the cars of that type from `CarRepository`, and their active
    reservations from `ReservationRepository`.
 4. It picks a car with no overlapping reservation. If none is free, the request is rejected.
-5. It saves the new reservation through `ReservationRepository` and returns it.
+5. It saves the new reservation through `ReservationRepository` and returns it. If the
+   database rejects the save because someone just booked that car (section 8), the client
+   gets a 409 Conflict.
 
 ### Repository calls per service method
 
@@ -418,3 +416,40 @@ A car can have many reservations over time; each reservation is for exactly one 
 | `cancel` | `ReservationRepository.findById`, `ReservationRepository.save` |
 | `availability` | `CarRepository.findByType`, `ReservationRepository.findActiveByCarId` |
 | `availableCars` | `CarRepository.findByType` (or `findAll` with no type), `ReservationRepository.findActiveByCarId` |
+
+## 8. Concurrency
+
+**Problem:** two people try to book the last free car of a type at the same moment. Both
+requests check, both see the car as free, and both save a booking.
+
+**Approach: a database constraint, no locks.** The `reservations` table has an exclusion
+constraint that rejects any active booking overlapping another active booking of the same car:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+ALTER TABLE reservations
+    ADD CONSTRAINT no_overlapping_bookings
+    EXCLUDE USING gist (
+        car_id WITH =,
+        tsrange(start_time, end_time) WITH &&
+    )
+    WHERE (status = 'ACTIVE');
+```
+
+- **`car_id WITH =`**: same car.
+- **`tsrange(start_time, end_time) WITH &&`**: overlapping time ranges. Ranges include the start
+  but not the end, so back-to-back bookings are allowed.
+- **`WHERE (status = 'ACTIVE')`**: cancelled bookings don't count.
+
+**How the service uses it:** `RentalService.reserve` picks the first car that looks free and
+saves a booking for it. If two requests race for the same car, the database accepts one save
+and rejects the other (`DataIntegrityViolationException`). The losing request gets a
+**409 Conflict** and the client can simply try again. `modify` works the same way.
+
+**Why this approach:**
+- Nothing is locked, so requests never wait for each other, even for popular car types.
+- The guarantee lives in the database, so it holds across any number of app servers and
+  even if the application logic has a bug.
+- Conflicts on the exact same car at the exact same moment are rare in car rental, so 409s
+  from this are rare too.
