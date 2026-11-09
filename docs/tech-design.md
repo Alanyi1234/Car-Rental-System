@@ -472,3 +472,25 @@ and rejects the other (`DataIntegrityViolationException`). The losing request ge
   even if the application logic has a bug.
 - Conflicts on the exact same car at the exact same moment are rare in car rental, so 409s
   from this are rare too.
+
+## 9. Improvements
+
+### Database indexes
+
+Primary keys (`cars.id`, `reservations.id`) are indexed automatically, and the exclusion
+constraint in section 8 creates its own index for overlap checks on insert. These indexes would
+speed up the remaining queries:
+
+```sql
+-- CarRepository.findByType: find cars of a type (reserve, availability)
+CREATE INDEX idx_cars_type ON cars (type);
+
+-- ReservationRepository.findActiveByCarId: find a car's active bookings
+-- (overlap checks in reserve, modify and availability)
+CREATE INDEX idx_reservations_active_car ON reservations (car_id) WHERE status = 'ACTIVE';
+```
+
+- `idx_reservations_active_car` matters most: it runs for every car checked during booking
+  and availability. It's a partial index (only `ACTIVE` rows), so it stays small as cancelled
+  and past bookings pile up.
+- If a "list my reservations" endpoint is added later, add an index on `reservations (user_id)`.
