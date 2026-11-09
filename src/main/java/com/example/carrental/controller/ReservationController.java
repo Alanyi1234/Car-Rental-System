@@ -6,6 +6,8 @@ import com.example.carrental.model.ReservationUpdateRequest;
 import com.example.carrental.service.RentalService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -18,6 +20,11 @@ import org.springframework.web.bind.annotation.RestController;
 import java.net.URI;
 import java.util.UUID;
 
+/**
+ * All /reservations endpoints assume the caller is authenticated with a JWT. In production, a
+ * Spring Security config (not included here) would reject requests without a valid token (401)
+ * before they reach this controller.
+ */
 @RestController
 @RequestMapping("/reservations")
 public class ReservationController {
@@ -28,28 +35,36 @@ public class ReservationController {
         this.rentalService = rentalService;
     }
 
-    /** Create a reservation. Returns 201 Created with a Location header. */
+    /**
+     * Create a reservation for the logged-in user. Returns 201 Created with a Location header.
+     * The user id comes from the JWT's {@code sub} claim, not from the request body.
+     */
     @PostMapping
-    public ResponseEntity<Reservation> create(@Valid @RequestBody ReservationRequest request) {
-        Reservation reservation = rentalService.reserve(request.carType(), request.start(), request.days());
+    public ResponseEntity<Reservation> create(@Valid @RequestBody ReservationRequest request,
+                                              @AuthenticationPrincipal Jwt jwt) {
+        UUID userId = UUID.fromString(jwt.getSubject());
+        Reservation reservation = rentalService.reserve(userId, request.carType(), request.start(), request.days());
         return ResponseEntity
                 .created(URI.create("/reservations/" + reservation.id()))
                 .body(reservation);
     }
 
     /** Get a reservation by id. */
+    // TODO (auth): read the user from the JWT and return 404 if the reservation isn't theirs.
     @GetMapping("/{id}")
     public Reservation get(@PathVariable UUID id) {
         return rentalService.getReservation(id);
     }
 
     /** Change the car type, start and/or length of a reservation. */
+    // TODO (auth): read the user from the JWT and return 404 if the reservation isn't theirs.
     @PatchMapping("/{id}")
     public Reservation update(@PathVariable UUID id, @Valid @RequestBody ReservationUpdateRequest request) {
         return rentalService.modify(id, request.carType(), request.start(), request.days());
     }
 
     /** Cancel a reservation. Returns 204 No Content. */
+    // TODO (auth): read the user from the JWT and return 404 if the reservation isn't theirs.
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> cancel(@PathVariable UUID id) {
         rentalService.cancel(id);
